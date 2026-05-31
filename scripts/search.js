@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
     searchEngine: "duckduckgo",
     searchLogoMode: "default",
     searchLogoText: "OpenTab Search",
-    searchPrimaryButtonColor: "",
+    searchPrimaryButtonColor: "#7c3aed",
     searchShowClock: true,
   };
   const messages = {
@@ -844,16 +844,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applyPrimaryButtonColor() {
-    if (!isValidHexColor(preferences.searchPrimaryButtonColor)) {
-      root.style.removeProperty("--primary-button-bg");
-      root.style.removeProperty("--primary-button-border");
-      root.style.removeProperty("--primary-button-text");
-      root.style.removeProperty("--primary-button-focus");
-      root.style.removeProperty("--primary-button-focus-shadow");
-      return;
-    }
+    const color = isValidHexColor(preferences.searchPrimaryButtonColor)
+      ? normalizeHexColor(preferences.searchPrimaryButtonColor)
+      : DEFAULTS.searchPrimaryButtonColor;
 
-    const color = normalizeHexColor(preferences.searchPrimaryButtonColor);
+    root.style.setProperty("--accent", color);
+    root.style.setProperty("--accent-shadow", color + "55");
+    root.style.setProperty("--focus", color);
+    root.style.setProperty("--focus-shadow", color + "40");
     root.style.setProperty("--primary-button-bg", color);
     root.style.setProperty("--primary-button-border", color);
     root.style.setProperty(

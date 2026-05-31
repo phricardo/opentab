@@ -13,10 +13,16 @@
           <span class="back-link-icon" aria-hidden="true"></span>
           <span id="backToSearchText">Back</span>
         </a>
-        <h1 id="optionsTitle">Options</h1>
-        <p id="optionsDescription">Enter a custom URL to open when you open a new tab. Leave empty to use the local search page.</p>
+        <header class="options-header">
+          <span class="options-header-icon" aria-hidden="true"></span>
+          <div>
+            <h1 id="optionsTitle">Options</h1>
+            <p id="optionsDescription">Enter a custom URL to open when you open a new tab. Leave empty to use the local search page.</p>
+          </div>
+        </header>
 
-        <section class="options-section general-options">
+        <section class="options-section general-options" aria-labelledby="generalSectionTitle">
+          <h2 id="generalSectionTitle">General</h2>
           <div class="settings-grid">
             <label class="field">
               <span id="themeSelectLabel">Theme</span>
@@ -54,19 +60,18 @@
 
         <section class="options-section appearance-options" aria-labelledby="appearanceSectionTitle">
           <h2 id="appearanceSectionTitle">Appearance</h2>
-          <p id="appearanceSectionDescription">Customize the main search button color.</p>
+          <p id="appearanceSectionDescription">Choose an accent color used across the interface, including primary buttons, active states, field focus, and toggles.</p>
 
-          <div class="settings-grid compact-grid">
-            <label class="field color-field" for="primaryButtonColor">
-              <span id="primaryButtonColorLabel">Primary button color</span>
-              <input id="primaryButtonColor" class="color-input" type="color" value="#f3f4f6">
-            </label>
-            <div class="field action-field">
-              <span aria-hidden="true">&nbsp;</span>
-              <button id="resetPrimaryButtonColor" class="secondary-button" type="button">Restore default</button>
-            </div>
+          <div class="accent-color-field" aria-labelledby="primaryButtonColorLabel">
+            <span id="primaryButtonColorLabel" class="accent-color-label">Accent color</span>
+            <div id="accentColorSwatches" class="accent-swatches"></div>
+            <input id="primaryButtonColor" class="color-input color-input-hidden" type="color" value="#7c3aed" aria-label="Custom accent color">
           </div>
-          <button id="primaryButtonPreview" class="search-button primary-button-preview" type="button">Search</button>
+        </section>
+
+        <section class="options-section display-options" aria-labelledby="displaySectionTitle">
+          <h2 id="displaySectionTitle">Display</h2>
+          <p id="displaySectionDescription">Control optional elements shown on the search page.</p>
           <label class="toggle-field" for="showClockToggle">
             <span id="showClockToggleLabel">Show clock</span>
             <input id="showClockToggle" class="toggle-input" type="checkbox" checked>

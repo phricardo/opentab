@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchEngineSelect = document.getElementById('searchEngineSelect');
   const optionsTitle = document.getElementById('optionsTitle');
   const optionsDescription = document.getElementById('optionsDescription');
+  const generalSectionTitle = document.getElementById('generalSectionTitle');
   const themeSelectLabel = document.getElementById('themeSelectLabel');
   const languageSelectLabel = document.getElementById('languageSelectLabel');
   const searchEngineSelectLabel = document.getElementById('searchEngineSelectLabel');
@@ -32,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const appearanceSectionDescription = document.getElementById('appearanceSectionDescription');
   const primaryButtonColorInput = document.getElementById('primaryButtonColor');
   const primaryButtonColorLabel = document.getElementById('primaryButtonColorLabel');
-  const resetPrimaryButtonColorBtn = document.getElementById('resetPrimaryButtonColor');
-  const primaryButtonPreview = document.getElementById('primaryButtonPreview');
+  const accentColorSwatches = document.getElementById('accentColorSwatches');
+  const displaySectionTitle = document.getElementById('displaySectionTitle');
+  const displaySectionDescription = document.getElementById('displaySectionDescription');
   const showClockToggle = document.getElementById('showClockToggle');
   const showClockToggleLabel = document.getElementById('showClockToggleLabel');
   const resetSectionTitle = document.getElementById('resetSectionTitle');
@@ -66,13 +68,27 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchShortcuts'
   ];
   const MAX_LOGO_IMAGE_SIZE = 512 * 1024;
+  const RECOMMENDED_ACCENT_COLORS = [
+    '#7c3aed',
+    '#2563eb',
+    '#38bdf8',
+    '#14b8a6',
+    '#22c55e',
+    '#fbbf24',
+    '#f97316',
+    '#ef4444',
+    '#db2777',
+    '#64748b',
+    '#313131',
+    '#d4d4d4'
+  ];
   const DEFAULTS = {
     searchTheme: 'system',
     searchLanguage: 'browser',
     searchEngine: 'duckduckgo',
     searchLogoMode: 'default',
     searchLogoText: 'OpenTab Search',
-    searchPrimaryButtonColor: '',
+    searchPrimaryButtonColor: '#7c3aed',
     searchShowClock: true
   };
   const messages = {
@@ -80,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'Extension Options',
       heading: 'Options',
       description: 'Enter a custom URL to open when you open a new tab. Leave empty to use the local search page.',
+      generalSectionTitle: 'General',
       themeLabel: 'Theme',
       languageLabel: 'Language',
       searchEngineLabel: 'Search engine',
@@ -87,10 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
       customUrlLabel: 'Custom URL',
       customUrlPlaceholder: 'https://example.com or example.com',
       appearanceSectionTitle: 'Appearance',
-      appearanceSectionDescription: 'Customize the main search button color.',
-      primaryButtonColorLabel: 'Primary button color',
-      resetPrimaryButtonColor: 'Restore default',
-      primaryButtonPreview: 'Search',
+      appearanceSectionDescription: 'Choose an accent color used across the interface, including primary buttons, active states, field focus, and toggles.',
+      primaryButtonColorLabel: 'Accent color',
+      customAccentColor: 'Choose custom accent color',
+      displaySectionTitle: 'Display',
+      displaySectionDescription: 'Control optional elements shown on the search page.',
       showClock: 'Show clock',
       logoSectionTitle: 'Logo',
       logoSectionDescription: 'Customize the logo shown on the search page.',
@@ -133,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'Op\u00e7\u00f5es da extens\u00e3o',
       heading: 'Op\u00e7\u00f5es',
       description: 'Informe uma URL personalizada para abrir em novas abas. Deixe vazio para usar a p\u00e1gina de busca local.',
+      generalSectionTitle: 'Geral',
       themeLabel: 'Tema',
       languageLabel: 'Idioma',
       searchEngineLabel: 'Mecanismo de busca',
@@ -140,10 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
       customUrlLabel: 'URL personalizada',
       customUrlPlaceholder: 'https://exemplo.com ou exemplo.com',
       appearanceSectionTitle: 'Apar\u00eancia',
-      appearanceSectionDescription: 'Personalize a cor do bot\u00e3o principal de busca.',
-      primaryButtonColorLabel: 'Cor do bot\u00e3o principal',
-      resetPrimaryButtonColor: 'Restaurar padr\u00e3o',
-      primaryButtonPreview: 'Buscar',
+      appearanceSectionDescription: 'Escolha uma cor de destaque usada na interface, incluindo bot\u00f5es principais, estados ativos, foco de campos e altern\u00e2ncias.',
+      primaryButtonColorLabel: 'Cor de destaque',
+      customAccentColor: 'Escolher cor de destaque personalizada',
+      displaySectionTitle: 'Exibi\u00e7\u00e3o',
+      displaySectionDescription: 'Controle elementos opcionais exibidos na p\u00e1gina de busca.',
       showClock: 'Exibir rel\u00f3gio',
       logoSectionTitle: 'Logotipo',
       logoSectionDescription: 'Personalize o logotipo exibido na p\u00e1gina de busca.',
@@ -359,23 +379,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return mark;
   }
 
-  function getActiveDefaultPrimaryButtonColor() {
-    if (preferences.searchTheme === 'dark') return '#222222';
-    if (preferences.searchTheme === 'light') return '#f3f4f6';
-
-    try {
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? '#222222'
-        : '#f3f4f6';
-    } catch (e) {
-      return '#f3f4f6';
-    }
+  function getActiveAccentColor() {
+    return isValidHexColor(preferences.searchPrimaryButtonColor)
+      ? normalizeHexColor(preferences.searchPrimaryButtonColor)
+      : DEFAULTS.searchPrimaryButtonColor;
   }
 
   function syncPrimaryButtonColorInput() {
-    primaryButtonColorInput.value = isValidHexColor(preferences.searchPrimaryButtonColor)
-      ? normalizeHexColor(preferences.searchPrimaryButtonColor)
-      : getActiveDefaultPrimaryButtonColor();
+    primaryButtonColorInput.value = getActiveAccentColor();
   }
 
   function setOptionText(select, value, text) {
@@ -388,21 +399,64 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyPrimaryButtonColor() {
-    if (!isValidHexColor(preferences.searchPrimaryButtonColor)) {
-      root.style.removeProperty('--primary-button-bg');
-      root.style.removeProperty('--primary-button-border');
-      root.style.removeProperty('--primary-button-text');
-      root.style.removeProperty('--primary-button-focus');
-      root.style.removeProperty('--primary-button-focus-shadow');
-      return;
-    }
-
-    const color = normalizeHexColor(preferences.searchPrimaryButtonColor);
+    const color = getActiveAccentColor();
+    root.style.setProperty('--accent', color);
+    root.style.setProperty('--accent-shadow', color + '55');
+    root.style.setProperty('--focus', color);
+    root.style.setProperty('--focus-shadow', color + '40');
     root.style.setProperty('--primary-button-bg', color);
     root.style.setProperty('--primary-button-border', color);
     root.style.setProperty('--primary-button-text', getTextColorForBackground(color));
     root.style.setProperty('--primary-button-focus', color);
     root.style.setProperty('--primary-button-focus-shadow', color + '55');
+  }
+
+  function setAccentColor(color) {
+    const text = currentText();
+
+    if (!isValidHexColor(color)) {
+      showStatus(text.invalidPrimaryButtonColor, false);
+      return;
+    }
+
+    preferences.searchPrimaryButtonColor = normalizeHexColor(color);
+    syncPrimaryButtonColorInput();
+    applyPrimaryButtonColor();
+    renderAccentSwatches();
+    savePreferences();
+  }
+
+  function createAccentSwatch(color, isSelected, label) {
+    const button = document.createElement('button');
+    button.className = 'accent-swatch';
+    button.type = 'button';
+    button.style.setProperty('--swatch-color', color);
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    button.classList.toggle('is-selected', isSelected);
+    button.addEventListener('click', () => setAccentColor(color));
+    return button;
+  }
+
+  function renderAccentSwatches() {
+    const text = currentText();
+    const activeColor = getActiveAccentColor();
+
+    accentColorSwatches.replaceChildren();
+    accentColorSwatches.appendChild(
+      createAccentSwatch(activeColor, true, text.primaryButtonColorLabel),
+    );
+
+    RECOMMENDED_ACCENT_COLORS.forEach((color) => {
+      accentColorSwatches.appendChild(createAccentSwatch(color, false, color));
+    });
+
+    const customButton = document.createElement('button');
+    customButton.className = 'accent-swatch custom-accent-swatch';
+    customButton.type = 'button';
+    customButton.setAttribute('aria-label', text.customAccentColor);
+    customButton.addEventListener('click', () => primaryButtonColorInput.click());
+    accentColorSwatches.appendChild(customButton);
   }
 
   function getLogoImage() {
@@ -469,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.title = text.title;
     optionsTitle.textContent = text.heading;
     optionsDescription.textContent = text.description;
+    generalSectionTitle.textContent = text.generalSectionTitle;
     backToSearchText.textContent = text.back;
     backToSearch.setAttribute('aria-label', text.back);
     themeSelectLabel.textContent = text.themeLabel;
@@ -479,8 +534,9 @@ document.addEventListener('DOMContentLoaded', () => {
     appearanceSectionTitle.textContent = text.appearanceSectionTitle;
     appearanceSectionDescription.textContent = text.appearanceSectionDescription;
     primaryButtonColorLabel.textContent = text.primaryButtonColorLabel;
-    resetPrimaryButtonColorBtn.textContent = text.resetPrimaryButtonColor;
-    primaryButtonPreview.textContent = text.primaryButtonPreview;
+    primaryButtonColorInput.setAttribute('aria-label', text.customAccentColor);
+    displaySectionTitle.textContent = text.displaySectionTitle;
+    displaySectionDescription.textContent = text.displaySectionDescription;
     showClockToggleLabel.textContent = text.showClock;
     logoSectionTitle.textContent = text.logoSectionTitle;
     logoSectionDescription.textContent = text.logoSectionDescription;
@@ -516,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme();
     applyPrimaryButtonColor();
     applyLanguage();
+    renderAccentSwatches();
     applyLogoPreview();
   }
 
@@ -706,17 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   primaryButtonColorInput.addEventListener('input', () => {
-    const text = currentText();
-    const color = primaryButtonColorInput.value;
-
-    if (!isValidHexColor(color)) {
-      showStatus(text.invalidPrimaryButtonColor, false);
-      return;
-    }
-
-    preferences.searchPrimaryButtonColor = normalizeHexColor(color);
-    applyPrimaryButtonColor();
-    savePreferences();
+    setAccentColor(primaryButtonColorInput.value);
   });
 
   input.addEventListener('input', saveCustomUrlFromInput);
@@ -724,16 +771,6 @@ document.addEventListener('DOMContentLoaded', () => {
   showClockToggle.addEventListener('change', () => {
     preferences.searchShowClock = showClockToggle.checked;
     savePreferences();
-  });
-
-  resetPrimaryButtonColorBtn.addEventListener('click', () => {
-    const text = currentText();
-
-    preferences.searchPrimaryButtonColor = DEFAULTS.searchPrimaryButtonColor;
-    syncPrimaryButtonColorInput();
-    applyPrimaryButtonColor();
-    savePreferences();
-    showStatus(text.saved);
   });
 
   logoImageInput.addEventListener('change', () => {
@@ -810,9 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleColorSchemeChange = () => {
       if (preferences.searchTheme === 'system') {
         applyTheme();
-        if (!isValidHexColor(preferences.searchPrimaryButtonColor)) {
-          syncPrimaryButtonColorInput();
-        }
+        syncPrimaryButtonColorInput();
       }
     };
 
