@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "searchLogoMode",
     "searchLogoText",
     "searchPrimaryButtonColor",
+    "searchShowClock",
   ];
   const SHORTCUTS_KEY = "searchShortcuts";
   const SEARCH_HISTORY_KEY = "searchQueryHistory";
@@ -141,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     searchLogoMode: "default",
     searchLogoText: "OpenTab Search",
     searchPrimaryButtonColor: "",
+    searchShowClock: true,
   };
   const messages = {
     en: {
@@ -264,6 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const primaryButtonColor = localStorage.getItem(
         "searchPrimaryButtonColor",
       );
+      const showClock = localStorage.getItem("searchShowClock");
 
       if (isValidTheme(theme)) values.searchTheme = theme;
       if (isValidLanguage(language)) values.searchLanguage = language;
@@ -280,6 +283,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isValidLogoText(logoText)) values.searchLogoText = logoText.trim();
       if (isValidHexColor(primaryButtonColor))
         values.searchPrimaryButtonColor = normalizeHexColor(primaryButtonColor);
+      if (isValidBooleanString(showClock))
+        values.searchShowClock = showClock === "true";
     } catch (e) {}
 
     return values;
@@ -506,6 +511,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (e) {
       return false;
     }
+  }
+
+  function isValidBooleanString(value) {
+    return value === "true" || value === "false";
   }
 
   function getShortcutLabel(url, label) {
@@ -781,6 +790,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateClock() {
+    if (preferences.searchShowClock === false) return;
     if (!clockTime || !clockDate) return;
 
     const now = new Date();
@@ -935,6 +945,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function currentText() {
     return messages[getActiveLanguage()] || messages.en;
+  }
+
+  function applyClockVisibility() {
+    if (!clockWidget) return;
+
+    const shouldShowClock = preferences.searchShowClock !== false;
+    clockWidget.hidden = !shouldShowClock;
+
+    if (shouldShowClock) updateClock();
   }
 
   function createMaskedIcon(path, className) {
@@ -1510,7 +1529,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   applyPreferences();
-  updateClock();
+  applyClockVisibility();
   setInterval(updateClock, 1000);
 
   storageGet(STORAGE_KEYS, (result) => {
@@ -1589,6 +1608,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    if (
+      result &&
+      typeof result.searchShowClock === "boolean" &&
+      result.searchShowClock !== preferences.searchShowClock
+    ) {
+      preferences.searchShowClock = result.searchShowClock;
+      changed = true;
+    }
+
     if (changed) {
       try {
         localStorage.setItem("searchTheme", preferences.searchTheme);
@@ -1604,8 +1632,13 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           localStorage.removeItem("searchPrimaryButtonColor");
         }
+        localStorage.setItem(
+          "searchShowClock",
+          String(preferences.searchShowClock),
+        );
       } catch (e) {}
       applyPreferences();
+      applyClockVisibility();
     }
   });
 

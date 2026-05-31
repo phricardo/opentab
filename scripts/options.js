@@ -36,11 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const primaryButtonColorLabel = document.getElementById('primaryButtonColorLabel');
   const resetPrimaryButtonColorBtn = document.getElementById('resetPrimaryButtonColor');
   const primaryButtonPreview = document.getElementById('primaryButtonPreview');
+  const showClockToggle = document.getElementById('showClockToggle');
+  const showClockToggleLabel = document.getElementById('showClockToggleLabel');
   const resetSectionTitle = document.getElementById('resetSectionTitle');
   const resetSectionDescription = document.getElementById('resetSectionDescription');
   const resetExtensionBtn = document.getElementById('resetExtension');
 
-  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor'];
+  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor', 'searchShowClock'];
   const RESET_LOCAL_KEYS = [
     'customUrl',
     'searchTheme',
@@ -49,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchLogoMode',
     'searchLogoText',
     'searchPrimaryButtonColor',
+    'searchShowClock',
     'searchLogoImage',
     'searchShortcuts',
     'searchQueryHistory'
@@ -61,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchLogoMode',
     'searchLogoText',
     'searchPrimaryButtonColor',
+    'searchShowClock',
     'searchShortcuts'
   ];
   const MAX_LOGO_IMAGE_SIZE = 512 * 1024;
@@ -70,7 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
     searchEngine: 'duckduckgo',
     searchLogoMode: 'default',
     searchLogoText: 'OpenTab Search',
-    searchPrimaryButtonColor: ''
+    searchPrimaryButtonColor: '',
+    searchShowClock: true
   };
   const messages = {
     en: {
@@ -88,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryButtonColorLabel: 'Primary button color',
       resetPrimaryButtonColor: 'Restore default',
       primaryButtonPreview: 'Search',
+      showClock: 'Show clock',
       logoSectionTitle: 'Logo',
       logoSectionDescription: 'Customize the logo shown on the search page.',
       logoTextLabel: 'Logo text',
@@ -143,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
       primaryButtonColorLabel: 'Cor do bot\u00e3o principal',
       resetPrimaryButtonColor: 'Restaurar padr\u00e3o',
       primaryButtonPreview: 'Buscar',
+      showClock: 'Exibir rel\u00f3gio',
       logoSectionTitle: 'Logotipo',
       logoSectionDescription: 'Personalize o logotipo exibido na p\u00e1gina de busca.',
       logoTextLabel: 'Texto do logotipo',
@@ -248,6 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const logoText = localStorage.getItem('searchLogoText');
       const logoImage = localStorage.getItem('searchLogoImage');
       const primaryButtonColor = localStorage.getItem('searchPrimaryButtonColor');
+      const showClock = localStorage.getItem('searchShowClock');
 
       if (isValidTheme(theme)) values.searchTheme = theme;
       if (isValidLanguage(language)) values.searchLanguage = language;
@@ -259,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (isValidLogoText(logoText)) values.searchLogoText = logoText.trim();
       if (isValidHexColor(primaryButtonColor)) values.searchPrimaryButtonColor = normalizeHexColor(primaryButtonColor);
+      if (isValidBooleanString(showClock)) values.searchShowClock = showClock === 'true';
     } catch (e) {}
 
     return values;
@@ -276,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         localStorage.removeItem('searchPrimaryButtonColor');
       }
+      localStorage.setItem('searchShowClock', String(preferences.searchShowClock));
     } catch (e) {}
 
     storageSet(preferences);
@@ -303,6 +313,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function isValidHexColor(color) {
     return typeof color === 'string' && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color.trim());
+  }
+
+  function isValidBooleanString(value) {
+    return value === 'true' || value === 'false';
   }
 
   function normalizeHexColor(color) {
@@ -474,6 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     primaryButtonColorLabel.textContent = text.primaryButtonColorLabel;
     resetPrimaryButtonColorBtn.textContent = text.resetPrimaryButtonColor;
     primaryButtonPreview.textContent = text.primaryButtonPreview;
+    showClockToggleLabel.textContent = text.showClock;
     logoSectionTitle.textContent = text.logoSectionTitle;
     logoSectionDescription.textContent = text.logoSectionDescription;
     logoTextLabel.textContent = text.logoTextLabel;
@@ -506,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
     languageSelect.value = preferences.searchLanguage;
     searchEngineSelect.value = preferences.searchEngine;
     logoTextInput.value = preferences.searchLogoText;
+    showClockToggle.checked = preferences.searchShowClock !== false;
     syncPrimaryButtonColorInput();
     applyTheme();
     applyPrimaryButtonColor();
@@ -602,6 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if (result && typeof result.searchShowClock === 'boolean' && result.searchShowClock !== preferences.searchShowClock) {
+      preferences.searchShowClock = result.searchShowClock;
+      changed = true;
+    }
+
     if (changed) {
       try {
         localStorage.setItem('searchTheme', preferences.searchTheme);
@@ -614,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           localStorage.removeItem('searchPrimaryButtonColor');
         }
+        localStorage.setItem('searchShowClock', String(preferences.searchShowClock));
       } catch (e) {}
       applyPreferences();
     }
@@ -669,6 +691,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     preferences.searchPrimaryButtonColor = normalizeHexColor(color);
     applyPrimaryButtonColor();
+    savePreferences();
+  });
+
+  showClockToggle.addEventListener('change', () => {
+    preferences.searchShowClock = showClockToggle.checked;
     savePreferences();
   });
 

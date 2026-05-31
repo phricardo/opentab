@@ -991,6 +991,66 @@ html[data-theme="light"] .default-logo-mark {
   pointer-events: none;
 }
 
+.toggle-field {
+  align-items: center;
+  color: var(--control-text);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 650;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.toggle-input {
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+
+.toggle-control {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: block;
+  flex: 0 0 auto;
+  height: 24px;
+  position: relative;
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  width: 44px;
+}
+
+.toggle-control::after {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  content: "";
+  height: 18px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 140ms ease, border-color 140ms ease;
+  width: 18px;
+}
+
+.toggle-input:checked + .toggle-control {
+  background: var(--button-bg);
+  border-color: var(--button-border);
+}
+
+.toggle-input:checked + .toggle-control::after {
+  border-color: var(--button-border);
+  transform: translateX(20px);
+}
+
+.toggle-input:focus-visible + .toggle-control {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--focus-shadow);
+  outline: none;
+}
+
 .text-input {
   background: var(--surface);
   border: 1px solid var(--border);
