@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Opens your configured page or OpenTab Search when a new tab is opened.",
   "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://icons.duckduckgo.com/*"],
   "options_ui": {
     "page": "pages/options.html",
     "open_in_tab": true

@@ -16,8 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const clockTime = document.getElementById("clockTime");
   const clockDate = document.getElementById("clockDate");
   const settingsLink = document.getElementById("settingsLink");
-  const devCredit = document.getElementById("devCredit");
-  const devCreditText = document.getElementById("devCreditText");
   const shortcutsGrid = document.getElementById("shortcutsGrid");
   const shortcutModal = document.getElementById("shortcutModal");
   const shortcutForm = document.getElementById("shortcutForm");
@@ -27,6 +25,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const shortcutModalTitle = document.getElementById("shortcutModalTitle");
   const shortcutUrlLabel = document.getElementById("shortcutUrlLabel");
   const shortcutNameLabel = document.getElementById("shortcutNameLabel");
+  const shortcutIconPickerTitle = document.getElementById(
+    "shortcutIconPickerTitle",
+  );
+  const shortcutIconPickerDescription = document.getElementById(
+    "shortcutIconPickerDescription",
+  );
+  const shortcutIconSearch = document.getElementById("shortcutIconSearch");
+  const shortcutIconGrid = document.getElementById("shortcutIconGrid");
   const shortcutCancel = document.getElementById("shortcutCancel");
   const shortcutSave = document.getElementById("shortcutSave");
 
@@ -43,6 +49,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const MAX_SEARCH_HISTORY = 100;
   const MAX_SEARCH_SUGGESTIONS = 6;
   const MAX_SHORTCUTS = 8;
+  const ICON_PICKER_BATCH_SIZE = 48;
+  const DUCK_DUCK_GO_PLACEHOLDER_SHA256 =
+    "e5db88ea2322863ca17817b99d60006c625a31cff0dad49cf05d3c6d16a75c17";
+  const FAVICON_PLACEHOLDER_PATH = "../assets/ui/favicon-placeholder.svg";
+  const ICON_LIBRARY = Array.isArray(window.OPENTAB_ICON_LIBRARY)
+    ? window.OPENTAB_ICON_LIBRARY.map((icon) => ({
+        name: String(icon.name || ""),
+        path: String(icon.path || ""),
+        search: normalizeIconSearch(icon.name || icon.path || ""),
+      })).filter((icon) => icon.name && icon.path)
+    : [];
+  const ICON_PATHS = new Set(ICON_LIBRARY.map((icon) => icon.path));
   const DEFAULT_SHORTCUTS = [
     { url: "https://www.youtube.com/", label: "YouTube" },
   ];
@@ -145,8 +163,11 @@ document.addEventListener("DOMContentLoaded", () => {
       invalidShortcutUrl: "Enter a valid URL.",
       shortcutLimit: "You can pin up to 8 sites.",
       clockLabel: "Current date and time",
-      openSourceCredit: "This project is open source and available at {repo}",
-      openSourceRepoLabel: "phricardo/opentab",
+      selectIcon: "Select icon",
+      iconPickerDescription:
+        "We found an icon for this site. You can choose another below.",
+      searchIcons: "Search icons",
+      iconOptions: "Icon options",
     },
     "pt-BR": {
       title: "Buscar",
@@ -168,9 +189,11 @@ document.addEventListener("DOMContentLoaded", () => {
       invalidShortcutUrl: "Informe uma URL v\u00e1lida.",
       shortcutLimit: "Voc\u00ea pode fixar at\u00e9 8 sites.",
       clockLabel: "Data e hora atuais",
-      openSourceCredit:
-        "Este projeto \u00e9 de c\u00f3digo aberto e est\u00e1 dispon\u00edvel em {repo}",
-      openSourceRepoLabel: "phricardo/opentab",
+      selectIcon: "Selecione o \u00edcone",
+      iconPickerDescription:
+        "Detectamos um \u00edcone para este site. Voc\u00ea pode escolher outro abaixo.",
+      searchIcons: "Pesquisar \u00edcones",
+      iconOptions: "Op\u00e7\u00f5es de \u00edcone",
     },
   };
 
@@ -181,6 +204,16 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeSuggestionIndex = -1;
   let visibleSuggestions = [];
   let shortcutModalTrigger = null;
+  let selectedShortcutIconType = "auto";
+  let selectedShortcutIconPath = "";
+  let filteredShortcutIcons = [];
+  let renderedShortcutIconCount = 0;
+  let draggedShortcutIndex = -1;
+  let dragOverShortcutIndex = -1;
+  let didDragShortcut = false;
+  let invalidShortcutUrlTimer = null;
+  let invalidShortcutUrlSpinnerStopped = false;
+  const faviconResolutionCache = new Map();
 
   function storageGet(keys, cb) {
     if (ext && ext.storage && ext.storage.sync) {
@@ -460,7 +493,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function isValidShortcutUrl(url) {
     try {
       const parsed = new URL(ensureProtocol(url));
-      return parsed.protocol === "http:" || parsed.protocol === "https:";
+      const hasValidProtocol =
+        parsed.protocol === "http:" || parsed.protocol === "https:";
+      const hostname = parsed.hostname;
+      const hasValidHostname =
+        hostname === "localhost" ||
+        hostname.includes(".") ||
+        /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
+        (hostname.startsWith("[") && hostname.endsWith("]"));
+
+      return hasValidProtocol && hasValidHostname;
     } catch (e) {
       return false;
     }
@@ -479,6 +521,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function normalizeIconSearch(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\.svg$/i, "")
+      .replace(/[\s._-]+/g, "");
+  }
+
+  function isValidIconPath(path) {
+    return typeof path === "string" && ICON_PATHS.has(path);
+  }
+
   function normalizeShortcuts(value) {
     if (!Array.isArray(value)) return [];
 
@@ -491,6 +544,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return {
           url,
           label: getShortcutLabel(url, shortcut.label),
+          ...(isValidIconPath(shortcut.iconPath)
+            ? { iconPath: shortcut.iconPath }
+            : {}),
         };
       })
       .filter(Boolean)
@@ -511,6 +567,78 @@ document.addEventListener("DOMContentLoaded", () => {
     const host = normalizeHost(url);
 
     return `https://icons.duckduckgo.com/ip3/${host}.ico`;
+  }
+
+  async function sha256FromArrayBuffer(buffer) {
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async function isDuckDuckGoPlaceholder(iconUrl) {
+    try {
+      const response = await fetch(iconUrl, { cache: "no-store" });
+
+      if (!response.ok) return true;
+
+      const buffer = await response.arrayBuffer();
+      const hash = await sha256FromArrayBuffer(buffer);
+
+      return hash === DUCK_DUCK_GO_PLACEHOLDER_SHA256;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function resolveFaviconUrl(url) {
+    const iconUrl = getFaviconUrl(url);
+
+    if (faviconResolutionCache.has(iconUrl)) {
+      return faviconResolutionCache.get(iconUrl);
+    }
+
+    const resolution = isDuckDuckGoPlaceholder(iconUrl).then((isPlaceholder) =>
+      isPlaceholder ? FAVICON_PLACEHOLDER_PATH : iconUrl,
+    );
+
+    faviconResolutionCache.set(iconUrl, resolution);
+    return resolution;
+  }
+
+  function createFaviconPlaceholderIcon(className) {
+    return createMaskedIcon(FAVICON_PLACEHOLDER_PATH, className);
+  }
+
+  function replaceImageWithPlaceholder(img, className) {
+    const placeholder = createFaviconPlaceholderIcon(className);
+    img.replaceWith(placeholder);
+  }
+
+  function applyResolvedFavicon(img, url) {
+    const iconUrl = getFaviconUrl(url);
+    img.dataset.faviconRequestUrl = iconUrl;
+    img.dataset.shortcutUrl = url;
+    img.src = iconUrl;
+    applyFaviconThemeFix(img, url);
+
+    resolveFaviconUrl(url).then((resolvedUrl) => {
+      if (img.dataset.faviconRequestUrl !== iconUrl) return;
+
+      img.onerror = () => {
+        img.onerror = null;
+        replaceImageWithPlaceholder(img, "shortcut-library-icon");
+      };
+      img.src = resolvedUrl;
+      if (resolvedUrl === FAVICON_PLACEHOLDER_PATH) {
+        img.onerror = null;
+        replaceImageWithPlaceholder(img, "shortcut-library-icon");
+        return;
+      }
+
+      applyFaviconThemeFix(img, url);
+    });
   }
 
   function isDarkThemeActive() {
@@ -597,6 +725,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document
       .querySelectorAll(".shortcut-favicon[data-shortcut-url]")
       .forEach((img) => {
+        if (img.getAttribute("src") === FAVICON_PLACEHOLDER_PATH) return;
+
         applyFaviconThemeFix(img, img.dataset.shortcutUrl);
       });
   }
@@ -744,18 +874,15 @@ document.addEventListener("DOMContentLoaded", () => {
     updateClock();
     settingsLink.textContent = text.settings;
     settingsLink.setAttribute("aria-label", text.settings);
-    devCreditText.textContent = text.openSourceCredit.replace(
-      "{repo}",
-      text.openSourceRepoLabel,
-    );
-    devCredit.setAttribute(
-      "aria-label",
-      text.openSourceCredit.replace("{repo}", text.openSourceRepoLabel),
-    );
     shortcutsGrid.setAttribute("aria-label", text.shortcutsDescription);
     shortcutModalTitle.textContent = text.addSite;
     shortcutUrlLabel.textContent = text.siteUrl;
     shortcutNameLabel.textContent = text.siteName;
+    shortcutIconPickerTitle.textContent = text.selectIcon;
+    shortcutIconPickerDescription.textContent = text.iconPickerDescription;
+    shortcutIconSearch.placeholder = text.searchIcons;
+    shortcutIconSearch.setAttribute("aria-label", text.searchIcons);
+    shortcutIconGrid.setAttribute("aria-label", text.iconOptions);
     shortcutUrl.placeholder = "https://example.com";
     shortcutLabel.placeholder = text.optionalName;
     shortcutCancel.textContent = text.cancel;
@@ -810,6 +937,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return messages[getActiveLanguage()] || messages.en;
   }
 
+  function createMaskedIcon(path, className) {
+    const icon = document.createElement("span");
+    icon.className = className;
+    icon.setAttribute("aria-hidden", "true");
+    icon.style.maskImage = `url("${path}")`;
+    icon.style.webkitMaskImage = `url("${path}")`;
+    return icon;
+  }
+
   function renderShortcuts() {
     const text = currentText();
     shortcutsGrid.replaceChildren();
@@ -821,24 +957,32 @@ document.addEventListener("DOMContentLoaded", () => {
         ? "shortcut-card is-filled"
         : "shortcut-card is-empty";
       item.type = "button";
+      item.dataset.shortcutIndex = String(index);
 
       if (shortcut) {
+        item.draggable = true;
         item.setAttribute(
           "aria-label",
           text.openShortcut.replace("{name}", shortcut.label),
         );
+        item.addEventListener("dragstart", (event) =>
+          handleShortcutDragStart(event, index),
+        );
+        item.addEventListener("dragend", handleShortcutDragEnd);
 
         const tile = document.createElement("span");
         tile.className = "shortcut-tile";
 
-        const image = document.createElement("img");
-        image.className = "shortcut-favicon";
+        const shortcutIcon = shortcut.iconPath
+          ? createMaskedIcon(shortcut.iconPath, "shortcut-library-icon")
+          : document.createElement("img");
 
-        applyFaviconThemeFix(image, shortcut.url);
-        image.src = getFaviconUrl(shortcut.url);
-
-        image.alt = "";
-        image.loading = "lazy";
+        if (!shortcut.iconPath) {
+          shortcutIcon.className = "shortcut-favicon";
+          shortcutIcon.alt = "";
+          shortcutIcon.loading = "lazy";
+          applyResolvedFavicon(shortcutIcon, shortcut.url);
+        }
 
         const removeButton = document.createElement("button");
         removeButton.className = "shortcut-remove";
@@ -847,7 +991,14 @@ document.addEventListener("DOMContentLoaded", () => {
           "aria-label",
           text.removeShortcut.replace("{name}", shortcut.label),
         );
-        removeButton.textContent = "\u00d7";
+        const removeIcon = document.createElement("span");
+        removeIcon.className = "shortcut-remove-icon";
+        removeIcon.setAttribute("aria-hidden", "true");
+        removeButton.appendChild(removeIcon);
+        removeButton.addEventListener("dragstart", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
         removeButton.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -858,11 +1009,17 @@ document.addEventListener("DOMContentLoaded", () => {
         label.className = "shortcut-label";
         label.textContent = shortcut.label;
 
-        tile.appendChild(image);
+        tile.appendChild(shortcutIcon);
         tile.appendChild(removeButton);
         item.appendChild(tile);
         item.appendChild(label);
-        item.addEventListener("click", () => {
+        item.addEventListener("click", (event) => {
+          if (didDragShortcut) {
+            event.preventDefault();
+            didDragShortcut = false;
+            return;
+          }
+
           window.location.href = shortcut.url;
         });
       } else {
@@ -874,7 +1031,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const plus = document.createElement("span");
         plus.className = "shortcut-plus";
         plus.setAttribute("aria-hidden", "true");
-        plus.textContent = "+";
 
         const label = document.createElement("span");
         label.className = "shortcut-label";
@@ -886,8 +1042,85 @@ document.addEventListener("DOMContentLoaded", () => {
         item.addEventListener("click", openShortcutModal);
       }
 
+      item.addEventListener("dragover", (event) =>
+        handleShortcutDragOver(event, index),
+      );
+      item.addEventListener("dragleave", () =>
+        handleShortcutDragLeave(index),
+      );
+      item.addEventListener("drop", (event) => handleShortcutDrop(event, index));
       shortcutsGrid.appendChild(item);
     }
+  }
+
+  function handleShortcutDragStart(event, index) {
+    if (!shortcuts[index]) {
+      event.preventDefault();
+      return;
+    }
+
+    draggedShortcutIndex = index;
+    didDragShortcut = true;
+    event.currentTarget.classList.add("is-dragging");
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    }
+  }
+
+  function handleShortcutDragOver(event, index) {
+    if (draggedShortcutIndex < 0 || draggedShortcutIndex === index) return;
+
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+
+    dragOverShortcutIndex = index;
+    event.currentTarget.classList.add("is-drop-target");
+  }
+
+  function handleShortcutDragLeave(index) {
+    const target = shortcutsGrid.querySelector(
+      `.shortcut-card[data-shortcut-index="${index}"]`,
+    );
+    if (target) target.classList.remove("is-drop-target");
+  }
+
+  function handleShortcutDrop(event, index) {
+    if (draggedShortcutIndex < 0) return;
+
+    event.preventDefault();
+    const fromIndex = draggedShortcutIndex;
+    clearShortcutDragState();
+
+    if (fromIndex === index || !shortcuts[fromIndex]) return;
+
+    reorderShortcut(fromIndex, index);
+  }
+
+  function handleShortcutDragEnd() {
+    clearShortcutDragState();
+    window.setTimeout(() => {
+      didDragShortcut = false;
+    }, 150);
+  }
+
+  function clearShortcutDragState() {
+    draggedShortcutIndex = -1;
+    dragOverShortcutIndex = -1;
+    shortcutsGrid
+      .querySelectorAll(".shortcut-card")
+      .forEach((card) => {
+        card.classList.remove("is-dragging", "is-drop-target");
+      });
+  }
+
+  function reorderShortcut(fromIndex, toIndex) {
+    const nextShortcuts = shortcuts.slice();
+    const [movedShortcut] = nextShortcuts.splice(fromIndex, 1);
+
+    nextShortcuts.splice(Math.min(toIndex, nextShortcuts.length), 0, movedShortcut);
+    saveShortcuts(nextShortcuts);
   }
 
   function openShortcutModal() {
@@ -896,15 +1129,24 @@ document.addEventListener("DOMContentLoaded", () => {
         ? document.activeElement
         : null;
     shortcutForm.reset();
+    selectedShortcutIconType = "auto";
+    selectedShortcutIconPath = "";
+    invalidShortcutUrlSpinnerStopped = false;
+    if (invalidShortcutUrlTimer) clearTimeout(invalidShortcutUrlTimer);
+    invalidShortcutUrlTimer = null;
     shortcutStatus.textContent = "";
     shortcutStatus.classList.remove("is-error");
     shortcutUrl.removeAttribute("aria-invalid");
+    renderShortcutIconPicker();
     shortcutModal.hidden = false;
     shortcutUrl.focus();
   }
 
   function closeShortcutModal() {
     shortcutModal.hidden = true;
+    if (invalidShortcutUrlTimer) clearTimeout(invalidShortcutUrlTimer);
+    invalidShortcutUrlTimer = null;
+    invalidShortcutUrlSpinnerStopped = false;
     shortcutUrl.removeAttribute("aria-invalid");
     shortcutStatus.textContent = "";
     shortcutStatus.classList.remove("is-error");
@@ -918,6 +1160,211 @@ document.addEventListener("DOMContentLoaded", () => {
       input.focus();
     }
     shortcutModalTrigger = null;
+  }
+
+  function getShortcutAutoIconState() {
+    const value = String(shortcutUrl.value || "").trim();
+    if (!value) return null;
+
+    if (!isValidShortcutUrl(value)) {
+      if (invalidShortcutUrlSpinnerStopped) return null;
+
+      return { state: "loading" };
+    }
+
+    return { state: "resolving", url: ensureProtocol(value) };
+  }
+
+  function setSelectedShortcutIcon(path) {
+    selectedShortcutIconType = "library";
+    selectedShortcutIconPath = isValidIconPath(path) ? path : "";
+    updateShortcutIconSelection();
+  }
+
+  function setAutoShortcutIcon() {
+    selectedShortcutIconType = "auto";
+    selectedShortcutIconPath = "";
+    updateShortcutIconSelection();
+  }
+
+  function updateShortcutIconSelection() {
+    shortcutIconGrid
+      .querySelectorAll(".shortcut-icon-option")
+      .forEach((button) => {
+        const isSelected =
+          button.dataset.iconType === selectedShortcutIconType &&
+          (selectedShortcutIconType === "auto" ||
+            button.dataset.iconPath === selectedShortcutIconPath);
+
+        button.classList.toggle(
+          "is-selected",
+          isSelected,
+        );
+        button.setAttribute(
+          "aria-selected",
+          isSelected ? "true" : "false",
+        );
+      });
+  }
+
+  function getFilteredShortcutIcons() {
+    const query = normalizeIconSearch(shortcutIconSearch.value);
+    if (!query) return ICON_LIBRARY;
+
+    return ICON_LIBRARY.filter((icon) => icon.search.includes(query));
+  }
+
+  function createShortcutIconButton(icon) {
+    const button = document.createElement("button");
+    button.className = "shortcut-icon-option";
+    button.type = "button";
+    button.dataset.iconType = "library";
+    button.dataset.iconPath = icon.path;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-label", icon.name);
+    button.setAttribute(
+      "aria-selected",
+      selectedShortcutIconType === "library" &&
+        icon.path === selectedShortcutIconPath
+        ? "true"
+        : "false",
+    );
+    button.classList.toggle(
+      "is-selected",
+      selectedShortcutIconType === "library" &&
+        icon.path === selectedShortcutIconPath,
+    );
+
+    button.appendChild(createMaskedIcon(icon.path, "shortcut-icon-option-mark"));
+    button.addEventListener("click", () => setSelectedShortcutIcon(icon.path));
+    return button;
+  }
+
+  function createAutoShortcutIconButton(autoIconState) {
+    const text = currentText();
+    const button = document.createElement("button");
+    button.className = "shortcut-icon-option";
+    button.type = "button";
+    button.dataset.iconType = "auto";
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-label", text.iconOptions);
+    button.setAttribute(
+      "aria-selected",
+      selectedShortcutIconType === "auto" ? "true" : "false",
+    );
+    button.classList.toggle("is-selected", selectedShortcutIconType === "auto");
+
+    if (autoIconState && autoIconState.state === "resolving") {
+      const iconUrl = getFaviconUrl(autoIconState.url);
+      const image = document.createElement("img");
+      image.className = "shortcut-icon-option-favicon";
+      image.alt = "";
+      image.loading = "lazy";
+      image.src = iconUrl;
+      image.dataset.shortcutUrl = autoIconState.url;
+      image.dataset.faviconRequestUrl = iconUrl;
+      applyFaviconThemeFix(image, autoIconState.url);
+
+      resolveFaviconUrl(autoIconState.url).then((resolvedUrl) => {
+        if (!image.isConnected || image.dataset.faviconRequestUrl !== iconUrl) {
+          return;
+        }
+
+        image.onerror = () => {
+          image.onerror = null;
+          replaceImageWithPlaceholder(
+            image,
+            "shortcut-icon-option-placeholder",
+          );
+        };
+
+        if (resolvedUrl === FAVICON_PLACEHOLDER_PATH) {
+          image.onerror = null;
+          replaceImageWithPlaceholder(
+            image,
+            "shortcut-icon-option-placeholder",
+          );
+          return;
+        }
+
+        image.src = resolvedUrl;
+        applyFaviconThemeFix(image, autoIconState.url);
+      });
+
+      button.appendChild(image);
+    } else {
+      const spinner = createMaskedIcon(
+        "../assets/ui/spinner.svg",
+        "shortcut-icon-option-spinner",
+      );
+      button.appendChild(spinner);
+    }
+
+    button.addEventListener("click", setAutoShortcutIcon);
+    return button;
+  }
+
+  function appendShortcutIconBatch() {
+    const fragment = document.createDocumentFragment();
+    const nextIcons = filteredShortcutIcons.slice(
+      renderedShortcutIconCount,
+      renderedShortcutIconCount + ICON_PICKER_BATCH_SIZE,
+    );
+
+    nextIcons.forEach((icon) => {
+      fragment.appendChild(createShortcutIconButton(icon));
+    });
+
+    renderedShortcutIconCount += nextIcons.length;
+    shortcutIconGrid.appendChild(fragment);
+  }
+
+  function renderShortcutIconPicker() {
+    const text = currentText();
+    const autoIconState = getShortcutAutoIconState();
+
+    filteredShortcutIcons = getFilteredShortcutIcons();
+    renderedShortcutIconCount = 0;
+    shortcutIconGrid.setAttribute("aria-label", text.iconOptions);
+    shortcutIconGrid.replaceChildren();
+    shortcutIconGrid.scrollTop = 0;
+
+    if (autoIconState) {
+      shortcutIconGrid.appendChild(createAutoShortcutIconButton(autoIconState));
+    }
+
+    appendShortcutIconBatch();
+  }
+
+  function maybeAppendShortcutIconBatch() {
+    if (renderedShortcutIconCount >= filteredShortcutIcons.length) return;
+
+    const distanceFromBottom =
+      shortcutIconGrid.scrollHeight -
+      shortcutIconGrid.scrollTop -
+      shortcutIconGrid.clientHeight;
+
+    if (distanceFromBottom <= 80) appendShortcutIconBatch();
+  }
+
+  function scheduleInvalidShortcutUrlSpinnerStop() {
+    const value = String(shortcutUrl.value || "").trim();
+    if (invalidShortcutUrlTimer) clearTimeout(invalidShortcutUrlTimer);
+    invalidShortcutUrlTimer = null;
+    invalidShortcutUrlSpinnerStopped = false;
+
+    if (!value || isValidShortcutUrl(value)) return;
+
+    invalidShortcutUrlTimer = window.setTimeout(() => {
+      const currentValue = String(shortcutUrl.value || "").trim();
+      if (!currentValue || isValidShortcutUrl(currentValue)) {
+        invalidShortcutUrlSpinnerStopped = false;
+        return;
+      }
+
+      invalidShortcutUrlSpinnerStopped = true;
+      renderShortcutIconPicker();
+    }, 600);
   }
 
   function keepFocusInShortcutModal(event) {
@@ -1203,12 +1650,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   shortcutUrl.addEventListener("input", () => {
+    selectedShortcutIconType = "auto";
+    selectedShortcutIconPath = "";
+    scheduleInvalidShortcutUrlSpinnerStop();
+    renderShortcutIconPicker();
+
     if (!shortcutUrl.hasAttribute("aria-invalid")) return;
 
     shortcutUrl.removeAttribute("aria-invalid");
     shortcutStatus.textContent = "";
     shortcutStatus.classList.remove("is-error");
   });
+
+  shortcutIconSearch.addEventListener("input", renderShortcutIconPicker);
+  shortcutIconGrid.addEventListener("scroll", maybeAppendShortcutIconBatch);
 
   shortcutForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1236,6 +1691,10 @@ document.addEventListener("DOMContentLoaded", () => {
       {
         url,
         label: getShortcutLabel(url, shortcutLabel.value),
+        ...(selectedShortcutIconType === "library" &&
+        isValidIconPath(selectedShortcutIconPath)
+          ? { iconPath: selectedShortcutIconPath }
+          : {}),
       },
     ]);
     closeShortcutModal();

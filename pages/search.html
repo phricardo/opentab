@@ -36,6 +36,15 @@
             <span id="shortcutNameLabel">Name</span>
             <input id="shortcutLabel" class="text-input" type="text" placeholder="Optional">
           </label>
+          <section class="shortcut-icon-section" aria-labelledby="shortcutIconPickerTitle">
+            <h3 id="shortcutIconPickerTitle">Select icon</h3>
+            <p id="shortcutIconPickerDescription" class="shortcut-icon-description">We found an icon for this site. You can choose another below.</p>
+            <label class="shortcut-icon-search-wrap" for="shortcutIconSearch">
+              <span class="shortcut-icon-search-mark" aria-hidden="true"></span>
+              <input id="shortcutIconSearch" class="text-input shortcut-icon-search" type="search" placeholder="Search icons" autocomplete="off">
+            </label>
+            <div id="shortcutIconGrid" class="shortcut-icon-grid" role="listbox" aria-label="Icon options"></div>
+          </section>
           <p id="shortcutStatus" class="status shortcut-status" aria-live="polite"></p>
           <div class="shortcut-actions">
             <button id="shortcutCancel" class="secondary-button" type="button">Cancel</button>
@@ -44,11 +53,8 @@
         </form>
       </div>
       <a id="settingsLink" class="settings-link" href="options.html">Settings</a>
-      <a id="devCredit" class="dev-credit" href="https://github.com/phricardo/opentab">
-        <span class="dev-credit-logo" aria-hidden="true"></span>
-        <span id="devCreditText">This project is open source and available at phricardo/opentab</span>
-      </a>
     </main>
+    <script src="../scripts/icon-library.js"></script>
     <script src="../scripts/search.js"></script>
   </body>
 </html>

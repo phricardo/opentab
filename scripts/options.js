@@ -17,10 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const languageSelectLabel = document.getElementById('languageSelectLabel');
   const searchEngineSelectLabel = document.getElementById('searchEngineSelectLabel');
   const customUrlLabel = document.getElementById('customUrlLabel');
-  const startupSearchEnabledInput = document.getElementById('startupSearchEnabled');
-  const startupSearchEnabledLabel = document.getElementById('startupSearchEnabledLabel');
-  const startupSectionTitle = document.getElementById('startupSectionTitle');
-  const startupSectionDescription = document.getElementById('startupSectionDescription');
   const logoSectionTitle = document.getElementById('logoSectionTitle');
   const logoSectionDescription = document.getElementById('logoSectionDescription');
   const logoTextInput = document.getElementById('logoText');
@@ -44,13 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetSectionDescription = document.getElementById('resetSectionDescription');
   const resetExtensionBtn = document.getElementById('resetExtension');
 
-  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'startupSearchEnabled', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor'];
+  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor'];
   const RESET_LOCAL_KEYS = [
     'customUrl',
     'searchTheme',
     'searchLanguage',
     'searchEngine',
-    'startupSearchEnabled',
     'searchLogoMode',
     'searchLogoText',
     'searchPrimaryButtonColor',
@@ -63,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchTheme',
     'searchLanguage',
     'searchEngine',
-    'startupSearchEnabled',
     'searchLogoMode',
     'searchLogoText',
     'searchPrimaryButtonColor',
@@ -74,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchTheme: 'system',
     searchLanguage: 'browser',
     searchEngine: 'duckduckgo',
-    startupSearchEnabled: true,
     searchLogoMode: 'default',
     searchLogoText: 'OpenTab Search',
     searchPrimaryButtonColor: ''
@@ -90,9 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
       back: 'Back',
       customUrlLabel: 'Custom URL',
       customUrlPlaceholder: 'https://example.com or example.com',
-      startupSectionTitle: 'Startup',
-      startupSectionDescription: 'Choose whether OpenTab Search opens when the browser starts.',
-      startupSearchEnabledLabel: 'Open OpenTab Search when the browser starts',
       appearanceSectionTitle: 'Appearance',
       appearanceSectionDescription: 'Customize the main search button color.',
       primaryButtonColorLabel: 'Primary button color',
@@ -148,9 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
       back: 'Voltar',
       customUrlLabel: 'URL personalizada',
       customUrlPlaceholder: 'https://exemplo.com ou exemplo.com',
-      startupSectionTitle: 'Inicializa\u00e7\u00e3o',
-      startupSectionDescription: 'Escolha se o OpenTab Search abre quando o navegador inicia.',
-      startupSearchEnabledLabel: 'Abrir o OpenTab Search ao iniciar o navegador',
       appearanceSectionTitle: 'Apar\u00eancia',
       appearanceSectionDescription: 'Personalize a cor do bot\u00e3o principal de busca.',
       primaryButtonColorLabel: 'Cor do bot\u00e3o principal',
@@ -257,7 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const theme = localStorage.getItem('searchTheme');
       const language = localStorage.getItem('searchLanguage');
       const searchEngine = localStorage.getItem('searchEngine');
-      const startupSearchEnabled = localStorage.getItem('startupSearchEnabled');
       const logoMode = localStorage.getItem('searchLogoMode');
       const logoText = localStorage.getItem('searchLogoText');
       const logoImage = localStorage.getItem('searchLogoImage');
@@ -266,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isValidTheme(theme)) values.searchTheme = theme;
       if (isValidLanguage(language)) values.searchLanguage = language;
       if (isValidSearchEngine(searchEngine)) values.searchEngine = searchEngine;
-      if (isValidBooleanPreference(startupSearchEnabled)) values.startupSearchEnabled = parseBooleanPreference(startupSearchEnabled);
       if (isValidLogoMode(logoMode)) {
         values.searchLogoMode = logoMode;
       } else if (logoImage || (isValidLogoText(logoText) && logoText.trim() !== DEFAULTS.searchLogoText)) {
@@ -284,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('searchTheme', preferences.searchTheme);
       localStorage.setItem('searchLanguage', preferences.searchLanguage);
       localStorage.setItem('searchEngine', preferences.searchEngine);
-      localStorage.setItem('startupSearchEnabled', String(preferences.startupSearchEnabled));
       localStorage.setItem('searchLogoMode', preferences.searchLogoMode);
       localStorage.setItem('searchLogoText', preferences.searchLogoText);
       if (preferences.searchPrimaryButtonColor) {
@@ -307,14 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function isValidSearchEngine(searchEngine) {
     return searchEngine === 'duckduckgo' || searchEngine === 'google-br';
-  }
-
-  function isValidBooleanPreference(value) {
-    return value === true || value === false || value === 'true' || value === 'false';
-  }
-
-  function parseBooleanPreference(value) {
-    return value === true || value === 'true';
   }
 
   function isValidLogoMode(logoMode) {
@@ -493,9 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchEngineSelectLabel.textContent = text.searchEngineLabel;
     customUrlLabel.textContent = text.customUrlLabel;
     input.placeholder = text.customUrlPlaceholder;
-    startupSectionTitle.textContent = text.startupSectionTitle;
-    startupSectionDescription.textContent = text.startupSectionDescription;
-    startupSearchEnabledLabel.textContent = text.startupSearchEnabledLabel;
     appearanceSectionTitle.textContent = text.appearanceSectionTitle;
     appearanceSectionDescription.textContent = text.appearanceSectionDescription;
     primaryButtonColorLabel.textContent = text.primaryButtonColorLabel;
@@ -532,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
     themeSelect.value = preferences.searchTheme;
     languageSelect.value = preferences.searchLanguage;
     searchEngineSelect.value = preferences.searchEngine;
-    startupSearchEnabledInput.checked = preferences.startupSearchEnabled;
     logoTextInput.value = preferences.searchLogoText;
     syncPrimaryButtonColorInput();
     applyTheme();
@@ -599,16 +571,6 @@ document.addEventListener('DOMContentLoaded', () => {
       changed = true;
     }
 
-    if (
-      result &&
-      Object.prototype.hasOwnProperty.call(result, 'startupSearchEnabled') &&
-      isValidBooleanPreference(result.startupSearchEnabled) &&
-      parseBooleanPreference(result.startupSearchEnabled) !== preferences.startupSearchEnabled
-    ) {
-      preferences.startupSearchEnabled = parseBooleanPreference(result.startupSearchEnabled);
-      changed = true;
-    }
-
     if (result && isValidLogoMode(result.searchLogoMode) && result.searchLogoMode !== preferences.searchLogoMode) {
       preferences.searchLogoMode = result.searchLogoMode;
       changed = true;
@@ -645,7 +607,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('searchTheme', preferences.searchTheme);
         localStorage.setItem('searchLanguage', preferences.searchLanguage);
         localStorage.setItem('searchEngine', preferences.searchEngine);
-        localStorage.setItem('startupSearchEnabled', String(preferences.startupSearchEnabled));
         localStorage.setItem('searchLogoMode', preferences.searchLogoMode);
         localStorage.setItem('searchLogoText', preferences.searchLogoText);
         if (preferences.searchPrimaryButtonColor) {
@@ -681,14 +642,6 @@ document.addEventListener('DOMContentLoaded', () => {
     preferences.searchEngine = isValidSearchEngine(searchEngineSelect.value) ? searchEngineSelect.value : DEFAULTS.searchEngine;
     applyPreferences();
     savePreferences();
-  });
-
-  startupSearchEnabledInput.addEventListener('change', () => {
-    const text = currentText();
-
-    preferences.startupSearchEnabled = startupSearchEnabledInput.checked;
-    savePreferences();
-    showStatus(text.saved);
   });
 
   logoTextInput.addEventListener('input', () => {
