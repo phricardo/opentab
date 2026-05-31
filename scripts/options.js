@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const ext = (typeof browser !== 'undefined') ? browser : (typeof chrome !== 'undefined' ? chrome : null);
   const root = document.documentElement;
   const input = document.getElementById('customUrl');
-  const saveBtn = document.getElementById('save');
-  const clearBtn = document.getElementById('clear');
   const backToSearch = document.getElementById('backToSearch');
   const backToSearchText = document.getElementById('backToSearchText');
   const status = document.getElementById('status');
@@ -110,13 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
       resetSectionDescription: 'This removes all extension settings and pinned shortcuts.',
       resetExtension: 'Reset extension',
       resetConfirm: 'Reset all extension settings? This cannot be undone.',
-      save: 'Save',
-      clear: 'Clear',
       invalidUrl: 'Invalid URL',
       invalidLogoImage: 'Choose a valid image file up to 512 KB',
       invalidLogoText: 'Logo text is required',
       invalidPrimaryButtonColor: 'Choose a valid button color',
-      cleared: 'Cleared - using local search page',
       reset: 'Extension reset',
       saved: 'Saved',
       themeOptions: {
@@ -166,13 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
       resetSectionDescription: 'Isso remove todas as configura\u00e7\u00f5es e atalhos fixados.',
       resetExtension: 'Redefinir extens\u00e3o',
       resetConfirm: 'Redefinir toda a extens\u00e3o? Isso n\u00e3o pode ser desfeito.',
-      save: 'Salvar',
-      clear: 'Limpar',
       invalidUrl: 'URL inv\u00e1lida',
       invalidLogoImage: 'Escolha uma imagem v\u00e1lida de at\u00e9 512 KB',
       invalidLogoText: 'O texto do logotipo \u00e9 obrigat\u00f3rio',
       invalidPrimaryButtonColor: 'Escolha uma cor de bot\u00e3o v\u00e1lida',
-      cleared: 'Limpo - usando a p\u00e1gina de busca local',
       reset: 'Extens\u00e3o redefinida',
       saved: 'Salvo',
       themeOptions: {
@@ -193,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let preferences = readLocalPreferences();
+  let savedCustomUrl = '';
   let statusTimer = null;
 
   function showStatus(msg, ok = true) {
@@ -503,9 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetSectionTitle.textContent = text.resetSectionTitle;
     resetSectionDescription.textContent = text.resetSectionDescription;
     resetExtensionBtn.textContent = text.resetExtension;
-    saveBtn.textContent = text.save;
-    clearBtn.textContent = text.clear;
-
     setOptionText(themeSelect, 'system', text.themeOptions.system);
     setOptionText(themeSelect, 'light', text.themeOptions.light);
     setOptionText(themeSelect, 'dark', text.themeOptions.dark);
@@ -544,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     storageRemove(RESET_SYNC_KEYS, () => {
       preferences = { ...DEFAULTS };
+      savedCustomUrl = '';
       input.value = '';
       logoImageInput.value = '';
       setLogoImageFileName('');
@@ -559,14 +550,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore saved value: prefer localStorage (fast) then fall back to storage.sync
   try {
     const cached = localStorage.getItem('customUrl');
-    if (cached) input.value = cached;
+    if (cached) {
+      savedCustomUrl = cached;
+      input.value = cached;
+    }
     else {
       storageGet(['customUrl'], (res) => {
-        if (res && res.customUrl) input.value = res.customUrl;
+        if (res && res.customUrl) {
+          savedCustomUrl = res.customUrl;
+          input.value = res.customUrl;
+        }
       });
     }
   } catch (e) {
-    storageGet(['customUrl'], (res) => { if (res && res.customUrl) input.value = res.customUrl; });
+    storageGet(['customUrl'], (res) => {
+      if (res && res.customUrl) {
+        savedCustomUrl = res.customUrl;
+        input.value = res.customUrl;
+      }
+    });
   }
 
   storageGet(PREFERENCE_KEYS, (result) => {
@@ -648,6 +650,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
+  function saveCustomUrlFromInput() {
+    const text = currentText();
+    const val = input.value.trim();
+
+    if (!validateUrl(val)) {
+      showStatus(text.invalidUrl, false);
+      return;
+    }
+
+    if (val === savedCustomUrl) return;
+
+    if (val === '') {
+      savedCustomUrl = '';
+      try { localStorage.removeItem('customUrl'); } catch (e) {}
+      storageRemove(['customUrl'], () => { showStatus(text.saved); });
+      return;
+    }
+
+    savedCustomUrl = val;
+    try { localStorage.setItem('customUrl', val); } catch (e) {}
+    storageSet({ customUrl: val }, () => { showStatus(text.saved); });
+  }
+
   themeSelect.addEventListener('change', () => {
     preferences.searchTheme = isValidTheme(themeSelect.value) ? themeSelect.value : DEFAULTS.searchTheme;
     applyPreferences();
@@ -693,6 +718,8 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPrimaryButtonColor();
     savePreferences();
   });
+
+  input.addEventListener('input', saveCustomUrlFromInput);
 
   showClockToggle.addEventListener('change', () => {
     preferences.searchShowClock = showClockToggle.checked;
@@ -801,36 +828,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   applyPreferences();
-
-  saveBtn.addEventListener('click', () => {
-    const text = currentText();
-    const val = input.value.trim();
-    if (!validateUrl(val)) {
-      showStatus(text.invalidUrl, false);
-      return;
-    }
-
-    if (val === '') {
-      // empty -> remove key
-      try { localStorage.removeItem('customUrl'); } catch (e) {}
-      storageRemove(['customUrl'], () => {
-        showStatus(text.cleared);
-      });
-      return;
-    }
-
-    // Save to both localStorage (fast local read) and storage.sync (for sync across devices)
-    try { localStorage.setItem('customUrl', val); } catch (e) {}
-    storageSet({ customUrl: val }, () => { showStatus(text.saved); });
-  });
-
-  clearBtn.addEventListener('click', () => {
-    const text = currentText();
-
-    input.value = '';
-    try { localStorage.removeItem('customUrl'); } catch (e) {}
-    storageRemove(['customUrl'], () => { showStatus(text.cleared); });
-  });
 
   resetExtensionBtn.addEventListener('click', resetExtension);
 });
