@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetSectionTitle = document.getElementById('resetSectionTitle');
   const resetSectionDescription = document.getElementById('resetSectionDescription');
   const resetExtensionBtn = document.getElementById('resetExtension');
+  const resetStatus = document.getElementById('resetStatus');
 
   const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor', 'searchShowClock'];
   const RESET_LOCAL_KEYS = [
@@ -207,17 +208,31 @@ document.addEventListener('DOMContentLoaded', () => {
   let preferences = readLocalPreferences();
   let savedCustomUrl = '';
   let statusTimer = null;
+  let resetStatusTimer = null;
 
-  function showStatus(msg, ok = true) {
-    status.textContent = msg;
-    status.classList.toggle('is-ok', ok);
-    status.classList.toggle('is-error', !ok);
+  function clearStatus(target) {
+    target.textContent = '';
+    target.classList.remove('is-ok', 'is-error');
+  }
 
-    if (statusTimer) clearTimeout(statusTimer);
-    statusTimer = setTimeout(() => {
-      status.textContent = '';
-      status.classList.remove('is-ok', 'is-error');
+  function showStatus(msg, ok = true, target = status) {
+    const isResetStatus = target === resetStatus;
+    const activeTimer = isResetStatus ? resetStatusTimer : statusTimer;
+
+    target.textContent = msg;
+    target.classList.toggle('is-ok', ok);
+    target.classList.toggle('is-error', !ok);
+
+    if (activeTimer) clearTimeout(activeTimer);
+    const nextTimer = setTimeout(() => {
+      clearStatus(target);
     }, 2500);
+
+    if (isResetStatus) {
+      resetStatusTimer = nextTimer;
+    } else {
+      statusTimer = nextTimer;
+    }
   }
 
   // Helper storage wrappers to support browser (promises) and chrome (callbacks)
@@ -595,10 +610,10 @@ document.addEventListener('DOMContentLoaded', () => {
       input.value = '';
       logoImageInput.value = '';
       setLogoImageFileName('');
-      status.textContent = '';
-      status.classList.remove('is-ok', 'is-error');
+      clearStatus(status);
+      clearStatus(resetStatus);
       applyPreferences();
-      showStatus(text.reset);
+      showStatus(text.reset, true, resetStatus);
     });
   }
 
