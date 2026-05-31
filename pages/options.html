@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OpenTab: Extension Options</title>
+    <link rel="stylesheet" href="../styles/search.css">
+  </head>
+  <body>
+    <main class="options-page">
+      <section class="options-panel">
+        <a id="backToSearch" class="back-link" href="search.html">
+          <span class="back-link-icon" aria-hidden="true"></span>
+          <span id="backToSearchText">Back</span>
+        </a>
+        <h1 id="optionsTitle">Options</h1>
+        <p id="optionsDescription">Enter a custom URL to open when you open a new tab. Leave empty to use the local search page.</p>
+
+        <section class="options-section general-options">
+          <div class="settings-grid">
+            <label class="field">
+              <span id="themeSelectLabel">Theme</span>
+              <select id="themeSelect" class="preference-select" name="theme">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span id="languageSelectLabel">Language</span>
+              <select id="languageSelect" class="preference-select" name="language">
+                <option value="browser">Browser</option>
+                <option value="pt-BR">Portugu&ecirc;s</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span id="searchEngineSelectLabel">Search engine</span>
+              <select id="searchEngineSelect" class="preference-select" name="searchEngine">
+                <option value="duckduckgo">DuckDuckGo</option>
+                <option value="google-br">Google</option>
+              </select>
+            </label>
+
+            <label class="field" for="customUrl">
+              <span id="customUrlLabel">Custom URL</span>
+              <input id="customUrl" class="text-input" type="text" placeholder="https://example.com or example.com">
+            </label>
+          </div>
+        </section>
+
+        <section class="options-section startup-options" aria-labelledby="startupSectionTitle">
+          <h2 id="startupSectionTitle">Startup</h2>
+          <p id="startupSectionDescription">Choose whether OpenTab Search opens when the browser starts.</p>
+
+          <label class="toggle-field" for="startupSearchEnabled">
+            <span id="startupSearchEnabledLabel">Open OpenTab Search when the browser starts</span>
+            <input id="startupSearchEnabled" class="toggle-input" type="checkbox">
+            <span class="toggle-control" aria-hidden="true"></span>
+          </label>
+        </section>
+
+        <section class="options-section appearance-options" aria-labelledby="appearanceSectionTitle">
+          <h2 id="appearanceSectionTitle">Appearance</h2>
+          <p id="appearanceSectionDescription">Customize the main search button color.</p>
+
+          <div class="settings-grid compact-grid">
+            <label class="field color-field" for="primaryButtonColor">
+              <span id="primaryButtonColorLabel">Primary button color</span>
+              <input id="primaryButtonColor" class="color-input" type="color" value="#f3f4f6">
+            </label>
+            <div class="field action-field">
+              <span aria-hidden="true">&nbsp;</span>
+              <button id="resetPrimaryButtonColor" class="secondary-button" type="button">Restore default</button>
+            </div>
+          </div>
+          <button id="primaryButtonPreview" class="search-button primary-button-preview" type="button">Search</button>
+        </section>
+
+        <section class="options-section logo-options" aria-labelledby="logoSectionTitle">
+          <h2 id="logoSectionTitle">Logo</h2>
+          <p id="logoSectionDescription">Customize the logo shown on the search page.</p>
+
+          <div id="customLogoControls" class="settings-grid">
+            <label class="field" for="logoText">
+              <span id="logoTextLabel">Logo text</span>
+              <input id="logoText" class="text-input" type="text" placeholder="OpenTab Search">
+            </label>
+
+            <div class="field file-field">
+              <span id="logoImageLabel">Logo image</span>
+              <div class="file-control">
+                <input id="logoImageInput" class="file-input" type="file" accept="image/*">
+                <label id="logoImageButton" class="secondary-button file-button" for="logoImageInput">Choose image</label>
+                <span id="logoImageFileName" class="file-name">No image selected</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="logo-preview-block">
+            <span id="logoPreviewLabel" class="preview-label">Preview</span>
+            <div id="logoPreview" class="logo-preview" aria-label="Logo preview"></div>
+          </div>
+
+          <button id="removeLogoImage" class="secondary-button" type="button">Remove image</button>
+          <button id="restoreDefaultLogo" class="secondary-button" type="button" hidden>Restore default logo</button>
+        </section>
+
+        <section class="options-section actions-options">
+          <div class="actions-row">
+            <button id="save" class="secondary-button" type="button">Save</button>
+            <button id="clear" class="secondary-button" type="button">Clear</button>
+            <span id="status" class="status" aria-live="polite"></span>
+          </div>
+        </section>
+
+        <section class="options-section reset-options" aria-labelledby="resetSectionTitle">
+          <h2 id="resetSectionTitle">Reset extension</h2>
+          <p id="resetSectionDescription">This removes all extension settings and pinned shortcuts.</p>
+          <button id="resetExtension" class="secondary-button danger-button" type="button">Reset extension</button>
+        </section>
+      </section>
+    </main>
+
+    <script src="../scripts/options.js"></script>
+  </body>
+</html>

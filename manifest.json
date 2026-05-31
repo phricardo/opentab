@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "OpenTab",
+  "version": "1.0.0",
+  "description": "Opens your configured page or OpenTab Search when a new tab is opened.",
+  "permissions": ["storage", "tabs"],
+  "options_ui": {
+    "page": "pages/options.html",
+    "open_in_tab": true
+  },
+  "options_page": "pages/options.html",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "email@gmail.com"
+    }
+  },
+  "action": {
+    "default_title": "OpenTab"
+  },
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "chrome_url_overrides": {
+    "newtab": "pages/newtab.html"
+  }
+}

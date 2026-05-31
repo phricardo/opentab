@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OpenTab: Search</title>
+    <link rel="stylesheet" href="../styles/search.css">
+  </head>
+  <body>
+    <main class="search-page">
+      <section id="clockWidget" class="clock-widget" aria-label="Current date and time">
+        <time id="clockTime" class="clock-time" datetime=""></time>
+        <span id="clockDate" class="clock-date"></span>
+      </section>
+      <form id="searchForm" class="search-box" autocomplete="off" role="search" aria-label="Search">
+        <div id="searchLogo" class="search-logo" aria-label="OpenTab Search"></div>
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <input id="searchInput" class="search-input" name="q" type="search" placeholder="Search" aria-label="Search" aria-autocomplete="list" aria-expanded="false" aria-controls="searchSuggestions" autocomplete="off" autofocus>
+            <span id="searchEngineIcon" class="search-engine-icon" aria-hidden="true"></span>
+            <div id="searchSuggestions" class="search-suggestions" role="listbox" hidden></div>
+          </div>
+          <button id="searchButton" class="search-button" type="submit">Search</button>
+        </div>
+      </form>
+      <section id="shortcutsGrid" class="shortcuts-grid" aria-label="Shortcuts"></section>
+      <div id="shortcutModal" class="shortcut-modal" role="dialog" aria-modal="true" aria-labelledby="shortcutModalTitle" hidden>
+        <div class="shortcut-modal-backdrop" data-close-shortcut-modal></div>
+        <form id="shortcutForm" class="shortcut-dialog" autocomplete="off">
+          <h2 id="shortcutModalTitle">Add site</h2>
+          <label class="shortcut-field" for="shortcutUrl">
+            <span id="shortcutUrlLabel">URL</span>
+            <input id="shortcutUrl" class="text-input" type="text" placeholder="https://example.com" aria-describedby="shortcutStatus" required>
+          </label>
+          <label class="shortcut-field" for="shortcutLabel">
+            <span id="shortcutNameLabel">Name</span>
+            <input id="shortcutLabel" class="text-input" type="text" placeholder="Optional">
+          </label>
+          <p id="shortcutStatus" class="status shortcut-status" aria-live="polite"></p>
+          <div class="shortcut-actions">
+            <button id="shortcutCancel" class="secondary-button" type="button">Cancel</button>
+            <button id="shortcutSave" class="search-button shortcut-save-button" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+      <a id="settingsLink" class="settings-link" href="options.html">Settings</a>
+      <a id="devCredit" class="dev-credit" href="https://github.com/phricardo/opentab">
+        <span class="dev-credit-logo" aria-hidden="true"></span>
+        <span id="devCreditText">This project is open source and available at phricardo/opentab</span>
+      </a>
+    </main>
+    <script src="../scripts/search.js"></script>
+  </body>
+</html>
