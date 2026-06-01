@@ -108,6 +108,17 @@
           <button id="restoreDefaultLogo" class="secondary-button" type="button" hidden>Restore default logo</button>
         </section>
 
+        <section class="options-section backup-options" aria-labelledby="backupSectionTitle">
+          <h2 id="backupSectionTitle">Backup settings</h2>
+          <p id="backupSectionDescription">Export or import your custom OpenTab settings.</p>
+          <div class="backup-actions">
+            <button id="exportSettings" class="secondary-button" type="button">Export settings</button>
+            <label id="importSettingsButton" class="secondary-button file-button" for="importSettingsInput">Import settings</label>
+            <input id="importSettingsInput" class="file-input" type="file" accept="application/json,.json">
+          </div>
+          <span id="backupStatus" class="status backup-status" aria-live="polite"></span>
+        </section>
+
         <section class="options-section reset-options" aria-labelledby="resetSectionTitle">
           <h2 id="resetSectionTitle">Reset extension</h2>
           <p id="resetSectionDescription">This removes all extension settings and pinned shortcuts.</p>

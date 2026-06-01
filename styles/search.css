@@ -1007,6 +1007,7 @@ html[data-theme="light"] .default-logo-mark {
 }
 
 .appearance-options h2,
+.backup-options h2,
 .display-options h2,
 .general-options h2,
 .logo-options h2,
@@ -1018,10 +1019,21 @@ html[data-theme="light"] .default-logo-mark {
 }
 
 .appearance-options p,
+.backup-options p,
 .display-options p,
 .logo-options p,
 .reset-options p {
   margin-bottom: 18px;
+}
+
+.backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.backup-status {
+  margin-top: 12px;
 }
 
 .accent-color-field {

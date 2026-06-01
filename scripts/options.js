@@ -38,12 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const displaySectionDescription = document.getElementById('displaySectionDescription');
   const showClockToggle = document.getElementById('showClockToggle');
   const showClockToggleLabel = document.getElementById('showClockToggleLabel');
+  const backupSectionTitle = document.getElementById('backupSectionTitle');
+  const backupSectionDescription = document.getElementById('backupSectionDescription');
+  const exportSettingsBtn = document.getElementById('exportSettings');
+  const importSettingsInput = document.getElementById('importSettingsInput');
+  const importSettingsButton = document.getElementById('importSettingsButton');
+  const backupStatus = document.getElementById('backupStatus');
   const resetSectionTitle = document.getElementById('resetSectionTitle');
   const resetSectionDescription = document.getElementById('resetSectionDescription');
   const resetExtensionBtn = document.getElementById('resetExtension');
   const resetStatus = document.getElementById('resetStatus');
 
   const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor', 'searchShowClock'];
+  const SHORTCUTS_KEY = 'searchShortcuts';
+  const EXPORT_VERSION = 1;
+  const MAX_IMPORT_FILE_SIZE = 1024 * 1024;
+  const MAX_SHORTCUTS = 8;
+  const EXPORT_SYNC_KEYS = [...PREFERENCE_KEYS, 'customUrl', SHORTCUTS_KEY];
   const RESET_LOCAL_KEYS = [
     'customUrl',
     'searchTheme',
@@ -54,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchPrimaryButtonColor',
     'searchShowClock',
     'searchLogoImage',
-    'searchShortcuts',
+    SHORTCUTS_KEY,
     'searchQueryHistory'
   ];
   const RESET_SYNC_KEYS = [
@@ -66,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchLogoText',
     'searchPrimaryButtonColor',
     'searchShowClock',
-    'searchShortcuts'
+    SHORTCUTS_KEY
   ];
   const MAX_LOGO_IMAGE_SIZE = 512 * 1024;
   const RECOMMENDED_ACCENT_COLORS = [
@@ -123,6 +134,14 @@ document.addEventListener('DOMContentLoaded', () => {
       removeLogoImage: 'Remove image',
       removeDefaultLogo: 'Remove default logo',
       restoreDefaultLogo: 'Restore default logo',
+      backupSectionTitle: 'Backup settings',
+      backupSectionDescription: 'Export or import your custom OpenTab settings.',
+      exportSettings: 'Export settings',
+      importSettings: 'Import settings',
+      exportSuccess: 'Settings exported',
+      importSuccess: 'Settings imported',
+      invalidImportFile: 'Choose a valid OpenTab JSON backup',
+      importFileTooLarge: 'Choose a JSON file up to 1 MB',
       resetSectionTitle: 'Reset extension',
       resetSectionDescription: 'This removes all extension settings and pinned shortcuts.',
       resetExtension: 'Reset extension',
@@ -178,6 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
       removeLogoImage: 'Remover imagem',
       removeDefaultLogo: 'Remover logotipo padr\u00e3o',
       restoreDefaultLogo: 'Restaurar logotipo padr\u00e3o',
+      backupSectionTitle: 'Backup das configura\u00e7\u00f5es',
+      backupSectionDescription: 'Exporte ou importe suas configura\u00e7\u00f5es personalizadas do OpenTab.',
+      exportSettings: 'Exportar configura\u00e7\u00f5es',
+      importSettings: 'Importar configura\u00e7\u00f5es',
+      exportSuccess: 'Configura\u00e7\u00f5es exportadas',
+      importSuccess: 'Configura\u00e7\u00f5es importadas',
+      invalidImportFile: 'Escolha um backup JSON v\u00e1lido do OpenTab',
+      importFileTooLarge: 'Escolha um arquivo JSON de at\u00e9 1 MB',
       resetSectionTitle: 'Redefinir extens\u00e3o',
       resetSectionDescription: 'Isso remove todas as configura\u00e7\u00f5es e atalhos fixados.',
       resetExtension: 'Redefinir extens\u00e3o',
@@ -208,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let preferences = readLocalPreferences();
   let savedCustomUrl = '';
   let statusTimer = null;
+  let backupStatusTimer = null;
   let resetStatusTimer = null;
 
   function clearStatus(target) {
@@ -217,7 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showStatus(msg, ok = true, target = status) {
     const isResetStatus = target === resetStatus;
-    const activeTimer = isResetStatus ? resetStatusTimer : statusTimer;
+    const isBackupStatus = target === backupStatus;
+    const activeTimer = isResetStatus ? resetStatusTimer : (isBackupStatus ? backupStatusTimer : statusTimer);
 
     target.textContent = msg;
     target.classList.toggle('is-ok', ok);
@@ -230,6 +259,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isResetStatus) {
       resetStatusTimer = nextTimer;
+    } else if (isBackupStatus) {
+      backupStatusTimer = nextTimer;
     } else {
       statusTimer = nextTimer;
     }
@@ -355,6 +386,244 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return value;
+  }
+
+  function ensureProtocol(url) {
+    const value = String(url || '').trim();
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(value)) {
+      return 'https://' + value;
+    }
+    return value;
+  }
+
+  function isValidShortcutUrl(url) {
+    try {
+      const parsed = new URL(ensureProtocol(url));
+      const hasValidProtocol = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      const hostname = parsed.hostname;
+      const hasValidHostname =
+        hostname === 'localhost' ||
+        hostname.includes('.') ||
+        /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) ||
+        (hostname.startsWith('[') && hostname.endsWith(']'));
+
+      return hasValidProtocol && hasValidHostname;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function getShortcutLabel(url, label) {
+    const customLabel = String(label || '').trim();
+    if (customLabel) return customLabel.slice(0, 40);
+
+    try {
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
+      const firstPart = hostname.split('.')[0] || hostname;
+      return firstPart.charAt(0).toUpperCase() + firstPart.slice(1);
+    } catch (e) {
+      return 'Site';
+    }
+  }
+
+  function isValidIconPath(path) {
+    return typeof path === 'string' && /^\.\.\/assets\/ui\/icons\/[a-z0-9_.-]+\.svg$/i.test(path);
+  }
+
+  function normalizeShortcuts(value) {
+    if (!Array.isArray(value)) return [];
+
+    return value
+      .map((shortcut) => {
+        const url = shortcut && shortcut.url ? ensureProtocol(shortcut.url) : '';
+        if (!isValidShortcutUrl(url)) return null;
+
+        return {
+          url,
+          label: getShortcutLabel(url, shortcut.label),
+          ...(isValidIconPath(shortcut.iconPath) ? { iconPath: shortcut.iconPath } : {})
+        };
+      })
+      .filter(Boolean)
+      .slice(0, MAX_SHORTCUTS);
+  }
+
+  function readLocalValue(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function readLocalShortcuts() {
+    try {
+      const rawValue = localStorage.getItem(SHORTCUTS_KEY);
+      if (rawValue === null) return null;
+      return normalizeShortcuts(JSON.parse(rawValue || '[]'));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeLocalShortcuts(nextShortcuts) {
+    try {
+      localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(nextShortcuts));
+    } catch (e) {}
+  }
+
+  function buildExportPayload(cb) {
+    storageGet(EXPORT_SYNC_KEYS, (result) => {
+      const localCustomUrl = readLocalValue('customUrl');
+      const localLogoImage = getLogoImage();
+      const localShortcuts = readLocalShortcuts();
+      const syncedShortcuts = result && Object.prototype.hasOwnProperty.call(result, SHORTCUTS_KEY)
+        ? normalizeShortcuts(result[SHORTCUTS_KEY])
+        : [];
+      const settings = {
+        customUrl: localCustomUrl !== null ? localCustomUrl : String((result && result.customUrl) || ''),
+        searchTheme: preferences.searchTheme,
+        searchLanguage: preferences.searchLanguage,
+        searchEngine: preferences.searchEngine,
+        searchLogoMode: preferences.searchLogoMode,
+        searchLogoText: preferences.searchLogoText,
+        searchPrimaryButtonColor: getActiveAccentColor(),
+        searchShowClock: preferences.searchShowClock !== false,
+        searchLogoImage: localLogoImage,
+        searchShortcuts: Array.isArray(localShortcuts) ? localShortcuts : syncedShortcuts
+      };
+
+      cb({
+        app: 'OpenTab',
+        version: EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        settings
+      });
+    });
+  }
+
+  function downloadExportFile(payload) {
+    const text = currentText();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const datePart = new Date().toISOString().slice(0, 10);
+
+    anchor.href = url;
+    anchor.download = 'opentab-settings-' + datePart + '.json';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    showStatus(text.exportSuccess, true, backupStatus);
+  }
+
+  function normalizeImportedSettings(payload) {
+    if (!payload || payload.app !== 'OpenTab' || payload.version !== EXPORT_VERSION || !payload.settings || typeof payload.settings !== 'object') {
+      return null;
+    }
+
+    const imported = payload.settings;
+    const nextPreferences = { ...DEFAULTS };
+    const customUrl = typeof imported.customUrl === 'string' && validateUrl(imported.customUrl.trim())
+      ? imported.customUrl.trim()
+      : '';
+    const logoImage = typeof imported.searchLogoImage === 'string' &&
+      (!imported.searchLogoImage || (imported.searchLogoImage.startsWith('data:image/') && imported.searchLogoImage.length <= MAX_IMPORT_FILE_SIZE))
+      ? imported.searchLogoImage
+      : '';
+
+    if (isValidTheme(imported.searchTheme)) nextPreferences.searchTheme = imported.searchTheme;
+    if (isValidLanguage(imported.searchLanguage)) nextPreferences.searchLanguage = imported.searchLanguage;
+    if (isValidSearchEngine(imported.searchEngine)) nextPreferences.searchEngine = imported.searchEngine;
+    if (isValidLogoMode(imported.searchLogoMode)) {
+      nextPreferences.searchLogoMode = imported.searchLogoMode;
+    } else if (logoImage || (isValidLogoText(imported.searchLogoText) && imported.searchLogoText.trim() !== DEFAULTS.searchLogoText)) {
+      nextPreferences.searchLogoMode = 'custom';
+    }
+    if (isValidLogoText(imported.searchLogoText)) nextPreferences.searchLogoText = imported.searchLogoText.trim();
+    if (isValidHexColor(imported.searchPrimaryButtonColor)) {
+      nextPreferences.searchPrimaryButtonColor = normalizeHexColor(imported.searchPrimaryButtonColor);
+    }
+    if (typeof imported.searchShowClock === 'boolean') nextPreferences.searchShowClock = imported.searchShowClock;
+
+    return {
+      customUrl,
+      preferences: nextPreferences,
+      logoImage,
+      shortcuts: normalizeShortcuts(imported.searchShortcuts)
+    };
+  }
+
+  function applyImportedSettings(nextSettings) {
+    const text = currentText();
+    const syncValues = {
+      ...nextSettings.preferences,
+      [SHORTCUTS_KEY]: nextSettings.shortcuts
+    };
+
+    try {
+      if (nextSettings.customUrl) {
+        localStorage.setItem('customUrl', nextSettings.customUrl);
+      } else {
+        localStorage.removeItem('customUrl');
+      }
+      writeLocalShortcuts(nextSettings.shortcuts);
+    } catch (e) {}
+
+    preferences = { ...nextSettings.preferences };
+    savedCustomUrl = nextSettings.customUrl;
+    input.value = savedCustomUrl;
+    setLogoImage(nextSettings.logoImage);
+    logoImageInput.value = '';
+    setLogoImageFileName('');
+
+    const finishImport = () => {
+      applyPreferences();
+      clearStatus(status);
+      clearStatus(resetStatus);
+      showStatus(text.importSuccess, true, backupStatus);
+    };
+
+    if (nextSettings.customUrl) {
+      syncValues.customUrl = nextSettings.customUrl;
+      storageSet(syncValues, finishImport);
+    } else {
+      storageRemove(['customUrl'], () => storageSet(syncValues, finishImport));
+    }
+  }
+
+  function importSettingsFile(file) {
+    const text = currentText();
+
+    if (!file) return;
+
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      showStatus(text.importFileTooLarge, false, backupStatus);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      try {
+        const payload = JSON.parse(String(reader.result || ''));
+        const nextSettings = normalizeImportedSettings(payload);
+
+        if (!nextSettings) {
+          showStatus(text.invalidImportFile, false, backupStatus);
+          return;
+        }
+
+        applyImportedSettings(nextSettings);
+      } catch (e) {
+        showStatus(text.invalidImportFile, false, backupStatus);
+      }
+    });
+    reader.addEventListener('error', () => {
+      showStatus(text.invalidImportFile, false, backupStatus);
+    });
+    reader.readAsText(file);
   }
 
   function getTextColorForBackground(hexColor) {
@@ -564,6 +833,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     logoPreviewLabel.textContent = text.logoPreviewLabel;
     restoreDefaultLogoBtn.textContent = text.restoreDefaultLogo;
+    backupSectionTitle.textContent = text.backupSectionTitle;
+    backupSectionDescription.textContent = text.backupSectionDescription;
+    exportSettingsBtn.textContent = text.exportSettings;
+    importSettingsButton.textContent = text.importSettings;
     resetSectionTitle.textContent = text.resetSectionTitle;
     resetSectionDescription.textContent = text.resetSectionDescription;
     resetExtensionBtn.textContent = text.resetExtension;
@@ -611,6 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
       logoImageInput.value = '';
       setLogoImageFileName('');
       clearStatus(status);
+      clearStatus(backupStatus);
       clearStatus(resetStatus);
       applyPreferences();
       showStatus(text.reset, true, resetStatus);
@@ -786,6 +1060,16 @@ document.addEventListener('DOMContentLoaded', () => {
   showClockToggle.addEventListener('change', () => {
     preferences.searchShowClock = showClockToggle.checked;
     savePreferences();
+  });
+
+  exportSettingsBtn.addEventListener('click', () => {
+    buildExportPayload(downloadExportFile);
+  });
+
+  importSettingsInput.addEventListener('change', () => {
+    const file = importSettingsInput.files && importSettingsInput.files[0];
+    importSettingsFile(file);
+    importSettingsInput.value = '';
   });
 
   logoImageInput.addEventListener('change', () => {
