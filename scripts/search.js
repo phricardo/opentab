@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "searchLogoText",
     "searchPrimaryButtonColor",
     "searchShowClock",
+    "searchAutoFocus",
   ];
   const SHORTCUTS_KEY = "searchShortcuts";
   const SEARCH_HISTORY_KEY = "searchQueryHistory";
@@ -143,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
     searchLogoText: "OpenTab Search",
     searchPrimaryButtonColor: "#7c3aed",
     searchShowClock: true,
+    searchAutoFocus: true,
   };
   const messages = {
     en: {
@@ -267,6 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "searchPrimaryButtonColor",
       );
       const showClock = localStorage.getItem("searchShowClock");
+      const autoFocus = localStorage.getItem("searchAutoFocus");
 
       if (isValidTheme(theme)) values.searchTheme = theme;
       if (isValidLanguage(language)) values.searchLanguage = language;
@@ -285,6 +288,8 @@ document.addEventListener("DOMContentLoaded", () => {
         values.searchPrimaryButtonColor = normalizeHexColor(primaryButtonColor);
       if (isValidBooleanString(showClock))
         values.searchShowClock = showClock === "true";
+      if (isValidBooleanString(autoFocus))
+        values.searchAutoFocus = autoFocus === "true";
     } catch (e) {}
 
     return values;
@@ -954,6 +959,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (shouldShowClock) updateClock();
   }
 
+  function focusSearchInputIfEnabled() {
+    if (!input || preferences.searchAutoFocus === false) return;
+
+    const activeElement = document.activeElement;
+    if (
+      activeElement &&
+      activeElement !== document.body &&
+      activeElement !== document.documentElement
+    ) {
+      return;
+    }
+
+    try {
+      input.focus({ preventScroll: true });
+    } catch (e) {
+      input.focus();
+    }
+  }
+
   function createMaskedIcon(path, className) {
     const icon = document.createElement("span");
     icon.className = className;
@@ -1615,6 +1639,15 @@ document.addEventListener("DOMContentLoaded", () => {
       changed = true;
     }
 
+    if (
+      result &&
+      typeof result.searchAutoFocus === "boolean" &&
+      result.searchAutoFocus !== preferences.searchAutoFocus
+    ) {
+      preferences.searchAutoFocus = result.searchAutoFocus;
+      changed = true;
+    }
+
     if (changed) {
       try {
         localStorage.setItem("searchTheme", preferences.searchTheme);
@@ -1634,10 +1667,16 @@ document.addEventListener("DOMContentLoaded", () => {
           "searchShowClock",
           String(preferences.searchShowClock),
         );
+        localStorage.setItem(
+          "searchAutoFocus",
+          String(preferences.searchAutoFocus),
+        );
       } catch (e) {}
       applyPreferences();
       applyClockVisibility();
     }
+
+    focusSearchInputIfEnabled();
   });
 
   storageGet([SHORTCUTS_KEY], (result) => {

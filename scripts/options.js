@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const displaySectionDescription = document.getElementById('displaySectionDescription');
   const showClockToggle = document.getElementById('showClockToggle');
   const showClockToggleLabel = document.getElementById('showClockToggleLabel');
+  const autoFocusSearchToggle = document.getElementById('autoFocusSearchToggle');
+  const autoFocusSearchToggleLabel = document.getElementById('autoFocusSearchToggleLabel');
   const backupSectionTitle = document.getElementById('backupSectionTitle');
   const backupSectionDescription = document.getElementById('backupSectionDescription');
   const exportSettingsBtn = document.getElementById('exportSettings');
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetExtensionBtn = document.getElementById('resetExtension');
   const resetStatus = document.getElementById('resetStatus');
 
-  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor', 'searchShowClock'];
+  const PREFERENCE_KEYS = ['searchTheme', 'searchLanguage', 'searchEngine', 'searchLogoMode', 'searchLogoText', 'searchPrimaryButtonColor', 'searchShowClock', 'searchAutoFocus'];
   const SHORTCUTS_KEY = 'searchShortcuts';
   const EXPORT_VERSION = 1;
   const MAX_IMPORT_FILE_SIZE = 1024 * 1024;
@@ -64,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchLogoText',
     'searchPrimaryButtonColor',
     'searchShowClock',
+    'searchAutoFocus',
     'searchLogoImage',
     SHORTCUTS_KEY,
     'searchQueryHistory'
@@ -77,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'searchLogoText',
     'searchPrimaryButtonColor',
     'searchShowClock',
+    'searchAutoFocus',
     SHORTCUTS_KEY
   ];
   const MAX_LOGO_IMAGE_SIZE = 512 * 1024;
@@ -101,7 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     searchLogoMode: 'default',
     searchLogoText: 'OpenTab Search',
     searchPrimaryButtonColor: '#7c3aed',
-    searchShowClock: true
+    searchShowClock: true,
+    searchAutoFocus: true
   };
   const messages = {
     en: {
@@ -122,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
       displaySectionTitle: 'Display',
       displaySectionDescription: 'Control optional elements shown on the search page.',
       showClock: 'Show clock',
+      autoFocusSearch: 'Automatically focus the search field',
       logoSectionTitle: 'Logo',
       logoSectionDescription: 'Customize the logo shown on the search page.',
       logoTextLabel: 'Logo text',
@@ -185,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
       displaySectionTitle: 'Exibi\u00e7\u00e3o',
       displaySectionDescription: 'Controle elementos opcionais exibidos na p\u00e1gina de busca.',
       showClock: 'Exibir rel\u00f3gio',
+      autoFocusSearch: 'Focar automaticamente no campo de busca',
       logoSectionTitle: 'Logotipo',
       logoSectionDescription: 'Personalize o logotipo exibido na p\u00e1gina de busca.',
       logoTextLabel: 'Texto do logotipo',
@@ -315,6 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const logoImage = localStorage.getItem('searchLogoImage');
       const primaryButtonColor = localStorage.getItem('searchPrimaryButtonColor');
       const showClock = localStorage.getItem('searchShowClock');
+      const autoFocus = localStorage.getItem('searchAutoFocus');
 
       if (isValidTheme(theme)) values.searchTheme = theme;
       if (isValidLanguage(language)) values.searchLanguage = language;
@@ -327,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isValidLogoText(logoText)) values.searchLogoText = logoText.trim();
       if (isValidHexColor(primaryButtonColor)) values.searchPrimaryButtonColor = normalizeHexColor(primaryButtonColor);
       if (isValidBooleanString(showClock)) values.searchShowClock = showClock === 'true';
+      if (isValidBooleanString(autoFocus)) values.searchAutoFocus = autoFocus === 'true';
     } catch (e) {}
 
     return values;
@@ -345,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('searchPrimaryButtonColor');
       }
       localStorage.setItem('searchShowClock', String(preferences.searchShowClock));
+      localStorage.setItem('searchAutoFocus', String(preferences.searchAutoFocus));
     } catch (e) {}
 
     storageSet(preferences);
@@ -489,6 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchLogoText: preferences.searchLogoText,
         searchPrimaryButtonColor: getActiveAccentColor(),
         searchShowClock: preferences.searchShowClock !== false,
+        searchAutoFocus: preferences.searchAutoFocus !== false,
         searchLogoImage: localLogoImage,
         searchShortcuts: Array.isArray(localShortcuts) ? localShortcuts : syncedShortcuts
       };
@@ -547,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
       nextPreferences.searchPrimaryButtonColor = normalizeHexColor(imported.searchPrimaryButtonColor);
     }
     if (typeof imported.searchShowClock === 'boolean') nextPreferences.searchShowClock = imported.searchShowClock;
+    if (typeof imported.searchAutoFocus === 'boolean') nextPreferences.searchAutoFocus = imported.searchAutoFocus;
 
     return {
       customUrl,
@@ -570,6 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('customUrl');
       }
       writeLocalShortcuts(nextSettings.shortcuts);
+      localStorage.setItem('searchAutoFocus', String(nextSettings.preferences.searchAutoFocus));
     } catch (e) {}
 
     preferences = { ...nextSettings.preferences };
@@ -822,6 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
     displaySectionTitle.textContent = text.displaySectionTitle;
     displaySectionDescription.textContent = text.displaySectionDescription;
     showClockToggleLabel.textContent = text.showClock;
+    autoFocusSearchToggleLabel.textContent = text.autoFocusSearch;
     logoSectionTitle.textContent = text.logoSectionTitle;
     logoSectionDescription.textContent = text.logoSectionDescription;
     logoTextLabel.textContent = text.logoTextLabel;
@@ -856,6 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchEngineSelect.value = preferences.searchEngine;
     logoTextInput.value = preferences.searchLogoText;
     showClockToggle.checked = preferences.searchShowClock !== false;
+    autoFocusSearchToggle.checked = preferences.searchAutoFocus !== false;
     syncPrimaryButtonColorInput();
     applyTheme();
     applyPrimaryButtonColor();
@@ -971,6 +986,11 @@ document.addEventListener('DOMContentLoaded', () => {
       changed = true;
     }
 
+    if (result && typeof result.searchAutoFocus === 'boolean' && result.searchAutoFocus !== preferences.searchAutoFocus) {
+      preferences.searchAutoFocus = result.searchAutoFocus;
+      changed = true;
+    }
+
     if (changed) {
       try {
         localStorage.setItem('searchTheme', preferences.searchTheme);
@@ -984,6 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.removeItem('searchPrimaryButtonColor');
         }
         localStorage.setItem('searchShowClock', String(preferences.searchShowClock));
+        localStorage.setItem('searchAutoFocus', String(preferences.searchAutoFocus));
       } catch (e) {}
       applyPreferences();
     }
@@ -1059,6 +1080,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   showClockToggle.addEventListener('change', () => {
     preferences.searchShowClock = showClockToggle.checked;
+    savePreferences();
+  });
+
+  autoFocusSearchToggle.addEventListener('change', () => {
+    preferences.searchAutoFocus = autoFocusSearchToggle.checked;
     savePreferences();
   });
 
